@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+
+/*
+ * Most colors in the design are Tailwind's own palette, so only the ones that
+ * differ are declared. The text sizes are named after where the design uses them.
+ */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: #00a63e;
+  --color-brand-soft: #e5f6ec;
+  --color-surface: #f4f7f5;
+  --color-chip: #e6f7ec;
+  --color-chip-border: #90d8ab;
+  --color-editor: #fafafa;
+
+  --color-label: #303541;
+  --color-muted: #7c8391;
+  --color-faint: #bababa;
+  --color-placeholder: #a7a7a7;
+  --color-ink: #1c1c1c;
+
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-small: 12px;
+  --text-body: 13px;
+  --text-title: 18px;
+  --text-display: 28px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    background: white;
+    color: var(--color-gray-900);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Plain typography for the server-sanitized HTML of an email body. */
+@layer components {
+  .email-body {
+    max-width: 600px;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  .email-body p,
+  .email-body ul,
+  .email-body ol,
+  .email-body blockquote {
+    margin: 0 0 12px;
+  }
+
+  .email-body ul {
+    list-style: disc;
+    padding-left: 20px;
+  }
+
+  .email-body ol {
+    list-style: decimal;
+    padding-left: 20px;
+  }
+
+  .email-body li > p {
+    margin: 0;
+  }
+
+  .email-body blockquote {
+    border-left: 3px solid var(--color-gray-200);
+    padding-left: 12px;
+    color: var(--color-gray-600);
+  }
+
+  .email-body h1,
+  .email-body h2,
+  .email-body h3 {
+    margin: 0 0 8px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .email-body h1 {
+    font-size: 18px;
+  }
+
+  .email-body h2 {
+    font-size: 16px;
+  }
+
+  .email-body h3 {
+    font-size: 14px;
+  }
+
+  .email-body a {
+    color: var(--color-brand);
+    text-decoration: underline;
+  }
+}
+
+/* The tour popover, restyled with the app's tokens. */
+.driver-popover.tour-popover {
+  max-width: 300px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-gray-100);
+  border-radius: 8px;
+  background: white;
+  color: var(--color-gray-900);
+  font-family: var(--font-sans);
+  box-shadow: 0 8px 24px rgb(16 24 40 / 0.12);
+}
+
+.tour-popover .driver-popover-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-gray-700);
+}
+
+.tour-popover .driver-popover-footer {
+  margin-top: 14px;
+  gap: 8px;
+}
+
+.tour-popover .driver-popover-footer button {
+  border: 1px solid var(--color-brand);
+  border-radius: 9999px;
+  background: white;
+  color: var(--color-brand);
+  padding: 3px 14px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-shadow: none;
+}
+
+.tour-popover .driver-popover-footer button.driver-popover-next-btn {
+  background: var(--color-brand);
+  color: white;
+}
+
+.tour-popover .driver-popover-footer button.tour-skip {
+  margin-right: auto;
+  border-color: transparent;
+  color: var(--color-gray-500);
+  padding-left: 0;
+}

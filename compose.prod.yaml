@@ -1,0 +1,64 @@
+# Layered over compose.yaml on the VM. Start only the services that belong there; the
+# web service is for local reviewers, since the frontend is on Vercel:
+#   docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build \
+#     migrate api worker caddy
+services:
+  postgres:
+    restart: unless-stopped
+    ports: !reset []
+    mem_limit: 512m
+
+  redis:
+    restart: unless-stopped
+    ports: !reset []
+    mem_limit: 256m
+
+  elasticsearch:
+    restart: unless-stopped
+    ports: !reset []
+    mem_limit: 1g
+
+  # A one-shot job: it exits when the migrations are applied, so it is not restarted.
+  migrate:
+    environment:
+      NODE_ENV: production
+
+  api:
+    restart: unless-stopped
+    # Only Caddy reaches the api, over the compose network.
+    ports: !reset []
+    mem_limit: 512m
+    environment:
+      NODE_ENV: production
+      BULL_BOARD_READ_ONLY: 'true'
+      # Set here rather than in .env, which still holds the local value. Google and Slack
+      # redirect URIs are built from it.
+      APP_URL: https://scheduler.dhruvranjan.dev
+
+  worker:
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      NODE_ENV: production
+      BULL_BOARD_READ_ONLY: 'true'
+      APP_URL: https://scheduler.dhruvranjan.dev
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-scheduler-api.dhruvranjan.dev}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:

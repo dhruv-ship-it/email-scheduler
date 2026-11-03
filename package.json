@@ -1,0 +1,32 @@
+{
+  "name": "email-job-scheduler",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,worker,web -c green,magenta,cyan \"npm run dev:api -w apps/server\" \"npm run dev:worker -w apps/server\" \"npm run dev -w apps/web\"",
+    "build": "npm run build -w apps/server && npm run build -w apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "npm run test --workspaces --if-present",
+    "test:int": "npm run test:int --workspaces --if-present",
+    "format": "prettier --write .",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.5",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
