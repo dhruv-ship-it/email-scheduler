@@ -56,7 +56,7 @@ const envSchema = z.object({
   BULL_BOARD_READ_ONLY: flag,
 
   POSTGRES_PASSWORD: z.string().default('scheduler'),
-  API_DOMAIN: z.string().default(''),
+  APP_DOMAIN: z.string().default(''),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -1,21 +1,41 @@
 # Deployment
 
-The frontend runs on Vercel at `scheduler.dhruvranjan.dev`. The backend runs on one Linux VM at `scheduler-api.dhruvranjan.dev`. The browser only ever talks to the frontend domain: Vercel rewrites `/api/*` to the VM, so the session cookie is first-party and the app needs no CORS setup.
+Everything runs on one Linux VM, behind one domain: `scheduler.dhruvranjan.dev`. Caddy takes the HTTPS traffic and proxies it to the web container. That container's nginx serves the built frontend and forwards `/api` to the api. The browser only ever talks to one origin, so the session cookie is first-party and the app needs no CORS setup.
+
+```text
+browser -> Caddy (80, 443) -> web (nginx) -> /api -> api
+```
 
 ## The VM
 
-I sized it at 4 GB of RAM. The memory limits in `compose.prod.yaml` add up to about 3 GB: Elasticsearch 1 GB, the api, the worker and Postgres 512 MB each, Redis 256 MB, Caddy 128 MB.
+I sized it at 4 GB of RAM. The memory limits in `compose.prod.yaml` add up to about 3 GB: Elasticsearch 1 GB, the api, the worker and Postgres 512 MB each, Redis 256 MB, Caddy 128 MB and the web container 64 MB.
 
-1. Install Docker with the Compose plugin.
-2. Elasticsearch needs a higher map count than most distributions set:
+1. Create the VM with any provider. I use Ubuntu 24.04 LTS with 2 vCPUs and 4 GB of RAM. Allow inbound TCP on ports 22, 80 and 443 in its firewall.
+2. Add a DNS A record for `scheduler.dhruvranjan.dev` that points at the VM's public IP. Caddy requests the certificate on first start, so the name has to resolve before then. You can check with `dig +short scheduler.dhruvranjan.dev`.
+3. Install Docker with the Compose plugin, and let your user run it:
+
+   ```sh
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker "$USER"
+   ```
+
+   Log out and back in so the group change applies.
+
+4. Elasticsearch needs a higher map count than most distributions set:
 
    ```sh
    sudo sysctl -w vm.max_map_count=262144
    echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/99-elasticsearch.conf
    ```
 
-3. Point an A record for `scheduler-api.dhruvranjan.dev` at the VM and open ports 80 and 443. Caddy requests the certificate on first start, so DNS has to resolve before then.
-4. Clone the repo and create `.env`:
+5. Clone the repo:
+
+   ```sh
+   git clone https://github.com/<you>/email-scheduler.git
+   cd email-scheduler
+   ```
+
+6. Write `.env`:
 
    ```sh
    cp .env.example .env
@@ -25,42 +45,32 @@ I sized it at 4 GB of RAM. The memory limits in `compose.prod.yaml` add up to ab
 
    | Variable                                   | Value                                     |
    | ------------------------------------------ | ----------------------------------------- |
+   | `APP_DOMAIN`                               | `scheduler.dhruvranjan.dev`               |
    | `SESSION_SECRET`                           | `openssl rand -base64 48`                 |
    | `ENCRYPTION_KEY`                           | `openssl rand -base64 32`                 |
    | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | from the Google console, see below        |
    | `POSTGRES_PASSWORD`                        | a new password                            |
    | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`   | optional, leave empty to switch Slack off |
 
-   `NODE_ENV`, `BULL_BOARD_READ_ONLY` and `APP_URL` are set in `compose.prod.yaml` and override whatever `.env` says. `API_DOMAIN` defaults to `scheduler-api.dhruvranjan.dev`. If the domains change, edit `APP_URL` in `compose.prod.yaml`, the rewrite in `apps/web/vercel.json` and the Google and Slack settings below.
+   `NODE_ENV`, `BULL_BOARD_READ_ONLY` and `APP_URL` are set in `compose.prod.yaml` and override whatever `.env` says. `APP_URL` is `https://scheduler.dhruvranjan.dev`. If the domain changes, edit `APP_URL` there, set `APP_DOMAIN` in `.env`, and update the Google and Slack settings below.
 
-5. Start the backend. I name the services because the `web` service in `compose.yaml` is for local reviewers:
-
-   ```sh
-   docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build \
-     migrate api worker caddy
-   ```
-
-   `migrate` applies the database migrations and exits. The api and worker start after it succeeds.
-
-6. Check it:
+7. Start everything with one command:
 
    ```sh
-   curl https://scheduler-api.dhruvranjan.dev/api/health
+   docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build
    ```
 
-   It should return `{"ok":true}`.
+   `migrate` applies the database migrations and exits. The api and worker start after it succeeds, then the web container, then Caddy. The first build takes a few minutes.
 
-Postgres, Redis, Elasticsearch and the api publish no ports in production. Only Caddy listens on the host, and it proxies to the api over the compose network.
+8. Check it:
 
-## Vercel
+   ```sh
+   curl https://scheduler.dhruvranjan.dev/api/health
+   ```
 
-Create a project from the repo with these settings:
+   It should return `{"ok":true}`. Then open `https://scheduler.dhruvranjan.dev` and sign in.
 
-- Root directory: `apps/web`.
-- Include source files outside of the Root Directory: on. The web app imports the `packages/shared` workspace.
-- Node.js version: 22.
-
-`apps/web/vercel.json` supplies the install and build commands, the output directory, the `/api/*` rewrite to the VM and the fallback to `index.html` for client-side routes.
+Postgres, Redis, Elasticsearch, the api and the web container publish no ports in production. Only Caddy listens on the host.
 
 ## Google sign-in
 
@@ -69,7 +79,7 @@ In the Google Cloud console, edit the OAuth client:
 - Authorized JavaScript origin: `https://scheduler.dhruvranjan.dev`
 - Authorized redirect URI: `https://scheduler.dhruvranjan.dev/api/auth/google/callback`
 
-The redirect URI is built from `APP_URL`, so it has to match the frontend domain, not the API domain.
+The redirect URI is built from `APP_URL`, so it has to match the domain in `compose.prod.yaml`.
 
 ## Slack
 
@@ -83,12 +93,14 @@ Leave `SLACK_REDIRECT_BASE_URL` empty. It exists for local development, where Sl
 ## Updating
 
 ```sh
+cd email-scheduler
 git pull
-docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build \
-  migrate api worker caddy
+docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build
 ```
 
-Compose rebuilds the server image and recreates the containers whose image changed. Emails scheduled before the update are in Redis and Postgres, so they keep their send times. If Redis was wiped, the reconciler rebuilds the jobs from Postgres when the worker starts.
+Compose rebuilds the server and web images and recreates the containers whose image changed. Emails scheduled before the update are in Redis and Postgres, so they keep their send times. If Redis was wiped, the reconciler rebuilds the jobs from Postgres when the worker starts.
+
+If you only changed `.env`, run the same command without `--build`.
 
 ## Why a VM and not Render
 

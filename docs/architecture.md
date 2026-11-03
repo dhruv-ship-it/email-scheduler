@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-  Browser[Browser] -->|same origin| Edge[Vercel or nginx]
+  Browser[Browser] -->|same origin| Edge[nginx]
   Edge -->|/api| API[Express api]
   API --> PG[(Postgres)]
   API -->|add jobs| Redis[(Redis)]
@@ -168,4 +168,4 @@ The state is a short-lived signed token that carries the user id, so the callbac
 
 **Postgres is the source of truth.** Context: Redis is fast and can lose data; the dashboard and the guarantees need a durable record. Decision: every email, status change and event is written to Postgres first, and the queue is a copy that can be rebuilt. Consequences: a Redis loss is recoverable and status changes are guarded by the database, at the price of a write per transition.
 
-**The API is served from the frontend's origin.** Context: the session is a cookie, and cross-site cookies need CORS rules, `SameSite=None` and third-party cookie support. Decision: nginx locally and a Vercel rewrite in production forward `/api` to the backend, so the browser only sees one origin. Consequences: the cookie stays first-party and the app needs no CORS setup, and `APP_URL` has to be the frontend's address everywhere.
+**The API is served from the frontend's origin.** Context: the session is a cookie, and cross-site cookies need CORS rules, `SameSite=None` and third-party cookie support. Decision: the web container's nginx forwards `/api` to the backend, both locally and in production where Caddy sits in front of it, so the browser only sees one origin. Consequences: the cookie stays first-party and the app needs no CORS setup, and `APP_URL` has to be the frontend's address everywhere.

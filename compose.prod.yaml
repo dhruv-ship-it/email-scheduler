@@ -1,7 +1,6 @@
-# Layered over compose.yaml on the VM. Start only the services that belong there; the
-# web service is for local reviewers, since the frontend is on Vercel:
-#   docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build \
-#     migrate api worker caddy
+# Layered over compose.yaml on the VM. One domain serves everything: Caddy proxies to the
+# web container, and its nginx forwards /api to the api.
+#   docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build
 services:
   postgres:
     restart: unless-stopped
@@ -25,7 +24,7 @@ services:
 
   api:
     restart: unless-stopped
-    # Only Caddy reaches the api, over the compose network.
+    # Only the web container's nginx reaches the api, over the compose network.
     ports: !reset []
     mem_limit: 512m
     environment:
@@ -43,6 +42,12 @@ services:
       BULL_BOARD_READ_ONLY: 'true'
       APP_URL: https://scheduler.dhruvranjan.dev
 
+  web:
+    restart: unless-stopped
+    # Only Caddy reaches the web container, over the compose network.
+    ports: !reset []
+    mem_limit: 64m
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -51,13 +56,13 @@ services:
       - '80:80'
       - '443:443'
     environment:
-      API_DOMAIN: ${API_DOMAIN:-scheduler-api.dhruvranjan.dev}
+      APP_DOMAIN: ${APP_DOMAIN:-scheduler.dhruvranjan.dev}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - api
+      - web
 
 volumes:
   caddy_data:

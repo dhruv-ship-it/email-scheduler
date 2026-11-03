@@ -59,8 +59,8 @@ function errorHandler(err: unknown, req: Request, res: Response, next: NextFunct
 export function createApp(): Express {
   const app = express()
   app.disable('x-powered-by')
-  // Behind Caddy, and behind the Vercel rewrite in front of it, the real client and
-  // protocol arrive in X-Forwarded-* headers; Secure cookies depend on reading them.
+  // Behind Caddy and the web container's nginx, the real client and protocol arrive in
+  // X-Forwarded-* headers; Secure cookies depend on reading them.
   if (env.NODE_ENV === 'production') app.set('trust proxy', true)
   app.use(helmet())
   app.use(
