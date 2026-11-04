@@ -2,7 +2,7 @@
 
 A service and dashboard for scheduling emails at scale. Emails are stored in Postgres, scheduled as BullMQ delayed jobs on Redis (no cron anywhere), and sent through Ethereal's fake SMTP from several senders. Per-sender and per-campaign hourly limits and the pacing between sends are enforced in Redis, so they hold across any number of workers. A restart loses nothing, and the same email is never sent twice.
 
-- Demo video: <!-- OWNER: add the demo video link here -->
+- Demo video: `https://drive.google.com/drive/folders/105o8zCfj1gGk3I0-VcDFXvW0MKE8B9tY?usp=sharing`
 - Live app: <!-- OWNER: add the live URL here -->
 
 ## Quick start

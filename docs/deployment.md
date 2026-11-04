@@ -31,7 +31,7 @@ I sized it at 4 GB of RAM. The memory limits in `compose.prod.yaml` add up to ab
 5. Clone the repo:
 
    ```sh
-   git clone https://github.com/<you>/email-scheduler.git
+   git clone https://github.com/dhruv-ship-it/email-scheduler.git
    cd email-scheduler
    ```
 
